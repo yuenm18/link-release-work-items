@@ -1,6 +1,6 @@
 # Link Work Items from Release 
 
-![Demo of Extension](images/extension-demo.gif)
+![Demo of Extension](https://raw.githubusercontent.com/yuenm18/link-release-work-items/master/images/extension-demo.gif)
 
 ## Features
 
@@ -8,7 +8,7 @@ This extension adds an action to the work item context menu which links all new 
 
 The queries to fetch this data are almost identical to those which are used to display the "Difference in work items" on the release pipeline page.
 
-![Existing Release Functionality](images/existing-functionality.png)
+![Existing Release Functionality](https://raw.githubusercontent.com/yuenm18/link-release-work-items/master/images/existing-functionality.png)
 
 ## References
 
