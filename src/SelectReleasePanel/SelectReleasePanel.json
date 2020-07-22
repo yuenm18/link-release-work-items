@@ -1,0 +1,16 @@
+{
+    "contributions": [
+        {
+            "id": "select-release-panel",
+            "type": "ms.vss-web.external-content",
+            "properties": {
+                "uri": "dist/SelectReleasePanel/SelectReleasePanel.html"
+            }
+        }
+    ],
+    "scopes": [
+        "vso.release",
+        "vso.work",
+        "vso.work_write"
+    ]
+}

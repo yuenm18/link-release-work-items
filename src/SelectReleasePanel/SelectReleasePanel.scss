@@ -1,0 +1,10 @@
+@import "node_modules/azure-devops-ui/Core/_platformCommon.scss";
+
+.justify-between {
+    justify-content: space-between;
+}
+
+.full-size-overflow {
+    flex: 1;
+    overflow: auto;
+}

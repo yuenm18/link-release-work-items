@@ -1,0 +1,18 @@
+{
+    "contributions": [
+        {
+            "id": "link-work-items-from-release",
+            "type": "ms.vss-web.action",
+            "description": "Links all work items from a release to this work item",
+            "targets": [
+                "ms.vss-work-web.work-item-context-menu"
+            ],
+            "properties": {
+                "text": "Link work items from a release",
+                "toolbarText": "Link work items from a release",
+                "uri": "dist/LinkWorkItemsMenuOption/LinkWorkItemsMenuOption.html",
+                "icon": "static/add-release.png"
+            }
+        }
+    ]
+}

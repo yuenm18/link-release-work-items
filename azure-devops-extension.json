@@ -1,0 +1,39 @@
+{
+    "manifestVersion": 1,
+    "id": "link-release-work-items",
+    "publisher": "yuenm18",
+    "version": "0.0.1",
+    "name": "Link Work Items From Release",
+    "description": "Links work items from a release",
+    "categories": [
+        "Azure Boards"
+    ],
+    "targets": [
+        {
+            "id": "Microsoft.VisualStudio.Services"
+        }
+    ],
+    "repository": {
+        "type": "git",
+        "uri": "https://github.com/yuenm18/link-release-work-items"
+    },
+    "tags": ["Work Items", "Releases", "Link"],
+    "icons": {
+        "default": "icon.png"
+    },
+    "content": {
+        "details": {
+            "path": "README.md"
+        }
+    },
+    "files": [
+        {
+            "path": "static",
+            "addressable": true
+        },
+        {
+            "path": "dist",
+            "addressable": true
+        }
+    ]
+}
