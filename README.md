@@ -1,5 +1,7 @@
 # Link Work Items from Release 
 
+[![Build Status](https://dev.azure.com/yuenm18/Extensions/_apis/build/status/yuenm18.link-release-work-items?branchName=master)](https://dev.azure.com/yuenm18/Extensions/_build/latest?definitionId=1&branchName=master)
+
 ![Demo of Extension](https://raw.githubusercontent.com/yuenm18/link-release-work-items/master/images/extension-demo.gif)
 
 ## Features
