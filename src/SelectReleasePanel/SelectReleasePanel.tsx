@@ -31,11 +31,15 @@ class SelectReleasePanel extends React.Component<{}, IPanelContentState> {
   private releaseEnvironmentSearchResults: ObservableArray<IListBoxItem<ReleaseEnvironment>>;
   private workItems: ObservableArray<ISimpleTableCell | ObservableValue<ISimpleTableCell | undefined>>;
 
+  private projectDisplay: ObservableValue<string>;
+  private releaseDisplay: ObservableValue<string>;
+  private releaseEnvironmentDisplay: ObservableValue<string>;
+
   private getReleaseDisplay = (release: Release | undefined): string => release ? `${release.id} - ${release.name} - ${release.releaseDefinition.name}` : '';
   private getReleaseEnvironmentDisplay = (releaseEnvironment: ReleaseEnvironment | undefined): string => releaseEnvironment ? releaseEnvironment.name : '';
   private getProjectDisplay = (projectReference: ProjectReference | undefined): string => projectReference ? projectReference.name : '';
 
-  private get projectId(): string {
+  private get selectedProjectId(): string {
     return this.state.selectedProject?.id ?? '';
   }
 
@@ -47,6 +51,10 @@ class SelectReleasePanel extends React.Component<{}, IPanelContentState> {
     this.releaseSearchResults = new ObservableArray<IListBoxItem<Release>>();
     this.releaseEnvironmentSearchResults = new ObservableArray<IListBoxItem<ReleaseEnvironment>>();
     this.workItems = new ObservableArray<ISimpleTableCell>();
+
+    this.projectDisplay = new ObservableValue<string>('');
+    this.releaseDisplay = new ObservableValue<string>('');
+    this.releaseEnvironmentDisplay = new ObservableValue<string>('');
 
     this.state = {
       selectedProject: undefined,
@@ -61,7 +69,12 @@ class SelectReleasePanel extends React.Component<{}, IPanelContentState> {
     SDK.init();
 
     SDK.ready().then(async () => {
-      this.getProjects();
+      const config = SDK.getConfiguration();
+
+      await this.loadProjects();
+
+      const selectedProject = this.projectSearchResult.value?.find((projectResult) => projectResult.data?.id === config.currentProjectId)?.data;
+      this.updateSelectedProject(selectedProject);
     });
   }
 
@@ -74,6 +87,7 @@ class SelectReleasePanel extends React.Component<{}, IPanelContentState> {
             className="margin-8"
             items={this.projectSearchResult}
             onValueChange={this.onValueChangeProject}
+            selectedText={this.projectDisplay}
             placeholder="Select a Project"
           />
           <EditableDropdown
@@ -82,6 +96,7 @@ class SelectReleasePanel extends React.Component<{}, IPanelContentState> {
             items={this.releaseSearchResults}
             onValueChange={this.onValueChangeRelease}
             onTextChange={this.onTextChangeRelease}
+            selectedText={this.getReleaseDisplay(this.state.selectedRelease)}
             placeholder="Select a Release"
             disabled={!this.state.selectedProject}
           />
@@ -90,6 +105,7 @@ class SelectReleasePanel extends React.Component<{}, IPanelContentState> {
             className="margin-8"
             items={this.releaseEnvironmentSearchResults}
             onValueChange={this.onValueChangeReleaseEnvironment}
+            selectedText={this.getReleaseEnvironmentDisplay(this.state.selectedReleaseEnvironment)}
             placeholder="Select a Release Environment"
             disabled={!this.state.selectedRelease}
           />
@@ -146,26 +162,25 @@ class SelectReleasePanel extends React.Component<{}, IPanelContentState> {
     );
   }
 
-  private getProjects = async (): Promise<void> => {
-    this.projectSearchResult.splice(0, this.projectSearchResult.length, ...(await getClient(CoreRestClient).getProjects()).map((p) => {
-      const project = {
-        id: p.id,
-        data: p,
-        text: this.getProjectDisplay(p),
+  private loadProjects = async (): Promise<void> => {
+    this.projectSearchResult.splice(0, this.projectSearchResult.length, ...(await getClient(CoreRestClient).getProjects()).map((project) => {
+      const projectResult = {
+        id: project.id,
+        data: project,
+        text: this.getProjectDisplay(project),
       };
 
-      return project;
+      return projectResult;
     }));
   }
 
   private onValueChangeProject = async (value?: IListBoxItem<ProjectReference>): Promise<void> => {
-    const selectedProject = value?.data;
-    if (!selectedProject) {
-      return;
-    }
+    await this.updateSelectedProject(value?.data);
+  };
 
+  private updateSelectedProject = async (selectedProject: ProjectReference | undefined): Promise<void> => {
+    this.updateDisplays(selectedProject);
     this.setState({
-      ...this.state,
       selectedProject,
       selectedRelease: undefined,
       selectedReleaseEnvironment: undefined,
@@ -173,22 +188,25 @@ class SelectReleasePanel extends React.Component<{}, IPanelContentState> {
       previousDeployment: undefined,
     });
 
-    this.workItems.removeAll();
-    await this.onTextChangeRelease(null, '');
-  };
-
+    await this.loadReleases();
+  }
 
   private areThereAnyWorkItem = (): boolean => {
     return !!this.state.workItemUrls.length;
   }
 
   private onTextChangeRelease = async (_event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | React.SyntheticEvent<HTMLElement> | null, value?: string): Promise<void> => {
+    await this.loadReleases(value);
+  }
+
+  private loadReleases = async (searchString?: string): Promise<void> => {
     this.releaseSearchResults.splice(0, this.releaseSearchResults.length, { id: 'loading', type: ListBoxItemType.Loading });
 
-    const releases: Release[] = await getClient(ReleaseRestClient).getReleases(this.projectId, undefined, undefined, value);
-    if (value && !isNaN(Number(value))) {
-      // support searching by release id
-      releases.unshift(...await getClient(ReleaseRestClient).getReleases(this.projectId,
+    const releases: Release[] = await getClient(ReleaseRestClient).getReleases(this.selectedProjectId, undefined, undefined, searchString);
+
+    // support searching by release id
+    if (searchString && !isNaN(Number(searchString))) {
+      releases.unshift(...await getClient(ReleaseRestClient).getReleases(this.selectedProjectId,
           undefined,
           undefined,
           undefined,
@@ -208,17 +226,17 @@ class SelectReleasePanel extends React.Component<{}, IPanelContentState> {
           undefined,
           undefined,
           undefined,
-          [+value]));
+          [+searchString]));
     }
 
-    const releaseResults = releases.map((r) => {
-      const release = {
-        id: String(r.id),
-        data: r,
-        text: this.getReleaseDisplay(r),
+    const releaseResults = releases.map((release) => {
+      const releaseResult = {
+        id: String(release.id),
+        data: release,
+        text: this.getReleaseDisplay(release),
       };
 
-      return release;
+      return releaseResult;
     });
 
     this.releaseSearchResults.splice(0, this.releaseSearchResults.length, ...releaseResults);
@@ -230,25 +248,24 @@ class SelectReleasePanel extends React.Component<{}, IPanelContentState> {
       return;
     }
 
-    selectedRelease = await getClient(ReleaseRestClient).getRelease(this.projectId, selectedRelease.id);
+    selectedRelease = await getClient(ReleaseRestClient).getRelease(this.selectedProjectId, selectedRelease.id);
+
+    this.updateDisplays(this.state.selectedProject, selectedRelease);
     this.setState({
-      ...this.state,
       selectedRelease,
       selectedReleaseEnvironment: undefined,
       workItemUrls: [],
       previousDeployment: undefined,
     });
 
-    this.workItems.removeAll();
-
-    this.releaseEnvironmentSearchResults.splice(0, this.releaseEnvironmentSearchResults.length, ...selectedRelease.environments.map((e) => {
-      const release = {
-        id: String(e.id),
-        data: e,
-        text: this.getReleaseEnvironmentDisplay(e),
+    this.releaseEnvironmentSearchResults.splice(0, this.releaseEnvironmentSearchResults.length, ...selectedRelease.environments.map((releaseEnvironment) => {
+      const releaseEnvironmentResult = {
+        id: String(releaseEnvironment.id),
+        data: releaseEnvironment,
+        text: this.getReleaseEnvironmentDisplay(releaseEnvironment),
       };
 
-      return release;
+      return releaseEnvironmentResult;
     }));
   };
 
@@ -258,13 +275,15 @@ class SelectReleasePanel extends React.Component<{}, IPanelContentState> {
       return;
     }
 
+    this.setState({ previousDeployment: undefined });
     this.workItems.removeAll();
     this.workItems.push(new ObservableValue(undefined));
 
     // Azure devops grabs the last deployment step and uses that when searching for the previous deployemnt
-    const deploymentAttemptsForReleaseEnvironment = this.state.selectedRelease.environments.find((e) => e.id == selectedReleaseEnvironment.id)?.deploySteps;
+    const deploymentAttemptsForReleaseEnvironment = this.state.selectedRelease.environments.find((environment) => environment.id === selectedReleaseEnvironment.id)?.deploySteps;
     const mostRecentDeploymentId = deploymentAttemptsForReleaseEnvironment?.[deploymentAttemptsForReleaseEnvironment.length - 1]?.deploymentId;
     if (!mostRecentDeploymentId) {
+      this.workItems.removeAll();
       return;
     }
 
@@ -285,6 +304,7 @@ class SelectReleasePanel extends React.Component<{}, IPanelContentState> {
         mostRecentDeploymentId));
 
     if (!deployments.length) {
+      this.workItems.removeAll();
       return;
     }
 
@@ -317,14 +337,24 @@ class SelectReleasePanel extends React.Component<{}, IPanelContentState> {
       this.workItems.change(this.workItems.length - 1, { ...workItemRefs[i] });
     }
 
-    const workItemUrls = workItemRefs.map((w) => w.url);
+    const workItemUrls = workItemRefs.map((workItem) => workItem.url);
+
     this.setState({
-      ...this.state,
       selectedReleaseEnvironment,
       workItemUrls,
       previousDeployment,
     });
   };
+
+  private updateDisplays(selectedProject: ProjectReference | undefined, selectedRelease?: Release | undefined, selectedReleaseEnvironment?: ReleaseEnvironment | undefined, workItems?: boolean | undefined) {
+    this.projectDisplay.value = this.getProjectDisplay(selectedProject);
+    this.releaseDisplay.value = this.getReleaseDisplay(selectedRelease);
+    this.releaseEnvironmentDisplay.value = this.getReleaseEnvironmentDisplay(selectedReleaseEnvironment);
+
+    if (!workItems) {
+      this.workItems.removeAll();
+    }
+  }
 
   private dismiss = async (useValue: boolean): Promise<void> => {
     if (useValue) {
@@ -341,8 +371,7 @@ class SelectReleasePanel extends React.Component<{}, IPanelContentState> {
       }));
     }
 
-    const configuration = SDK.getConfiguration();
-    configuration.panel?.close(useValue ? this.state.selectedRelease : undefined);
+    SDK.getConfiguration().panel?.close(useValue ? this.state.selectedRelease : undefined);
   }
 }
 

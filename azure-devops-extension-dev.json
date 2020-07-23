@@ -1,10 +1,10 @@
 {
     "manifestVersion": 1,
-    "id": "link-release-work-items",
+    "id": "link-release-work-items-dev",
     "publisher": "yuenm18",
-    "version": "0.0.24",
-    "name": "Link Work Items From Release",
-    "description": "Links work items from a release",
+    "version": "0.0.19",
+    "name": "Link Work Items From Release (Dev)",
+    "description": "Links work items from a release (Dev)",
     "categories": [
         "Azure Boards"
     ],
