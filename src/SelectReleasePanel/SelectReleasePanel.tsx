@@ -36,7 +36,7 @@ class SelectReleasePanel extends React.Component<{}, IPanelContentState> {
   private getProjectDisplay = (projectReference: ProjectReference | undefined): string => projectReference ? projectReference.name : '';
 
   private get projectId(): string {
-    return this.state.selectedProject && this.state.selectedProject.id || '';
+    return this.state.selectedProject?.id ?? '';
   }
 
   constructor(props: {}) {
@@ -159,7 +159,7 @@ class SelectReleasePanel extends React.Component<{}, IPanelContentState> {
   }
 
   private onValueChangeProject = async (value?: IListBoxItem<ProjectReference>): Promise<void> => {
-    const selectedProject = value && value.data;
+    const selectedProject = value?.data;
     if (!selectedProject) {
       return;
     }
@@ -225,7 +225,7 @@ class SelectReleasePanel extends React.Component<{}, IPanelContentState> {
   }
 
   private onValueChangeRelease = async (value?: IListBoxItem<Release>): Promise<void> => {
-    let selectedRelease = value && value.data;
+    let selectedRelease = value?.data;
     if (!selectedRelease) {
       return;
     }
@@ -238,6 +238,7 @@ class SelectReleasePanel extends React.Component<{}, IPanelContentState> {
       workItemUrls: [],
       previousDeployment: undefined,
     });
+
     this.workItems.removeAll();
 
     this.releaseEnvironmentSearchResults.splice(0, this.releaseEnvironmentSearchResults.length, ...selectedRelease.environments.map((e) => {
@@ -252,13 +253,20 @@ class SelectReleasePanel extends React.Component<{}, IPanelContentState> {
   };
 
   private onValueChangeReleaseEnvironment = async (value?: IListBoxItem<ReleaseEnvironment>): Promise<void> => {
-    const selectedReleaseEnvironment = value && value.data;
+    const selectedReleaseEnvironment = value?.data;
     if (!this.state.selectedRelease || !selectedReleaseEnvironment) {
       return;
     }
 
     this.workItems.removeAll();
     this.workItems.push(new ObservableValue(undefined));
+
+    // Azure devops grabs the last deployment step and uses that when searching for the previous deployemnt
+    const deploymentAttemptsForReleaseEnvironment = this.state.selectedRelease.environments.find((e) => e.id == selectedReleaseEnvironment.id)?.deploySteps;
+    const mostRecentDeploymentId = deploymentAttemptsForReleaseEnvironment?.[deploymentAttemptsForReleaseEnvironment.length - 1]?.deploymentId;
+    if (!mostRecentDeploymentId) {
+      return;
+    }
 
     // Copy this url exactly
     // https://<org>.vsrm.visualstudio.com/<project>/_apis/Release/deployments?definitionId=18&definitionEnvironmentId=85&deploymentStatus=30&operationStatus=7960&latestAttemptsOnly=true&queryOrder=0&%24top=50&continuationToken=107925
@@ -274,7 +282,7 @@ class SelectReleasePanel extends React.Component<{}, IPanelContentState> {
         true,
         ReleaseQueryOrder.Descending,
         2,
-        this.state.selectedRelease.id));
+        mostRecentDeploymentId));
 
     if (!deployments.length) {
       return;
@@ -286,7 +294,8 @@ class SelectReleasePanel extends React.Component<{}, IPanelContentState> {
     for (const artifact of this.state.selectedRelease.artifacts) {
       workItemRefs.push(...await getClient(ReleaseRestClient).getReleaseWorkItemsRefs(
           this.state.selectedRelease.projectReference.id,
-          this.state.selectedRelease.id, previousDeployment && previousDeployment.release.id,
+          this.state.selectedRelease.id,
+          previousDeployment?.release.id,
           undefined,
           artifact.alias));
     }
@@ -333,7 +342,7 @@ class SelectReleasePanel extends React.Component<{}, IPanelContentState> {
     }
 
     const configuration = SDK.getConfiguration();
-    configuration.panel && configuration.panel.close(useValue ? this.state.selectedRelease : undefined);
+    configuration.panel?.close(useValue ? this.state.selectedRelease : undefined);
   }
 }
 
