@@ -188,13 +188,19 @@ class SelectReleasePanel extends React.Component<{}, IPanelContentState> {
       workItemUrls: [],
       previousDeployment: undefined,
     });
+
+    await this.loadReleases();
   }
 
   private areThereAnyWorkItem = (): boolean => {
     return !!this.state.workItemUrls.length;
   }
 
-  private onTextChangeRelease = async (_event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | React.SyntheticEvent<HTMLElement> | null, searchString?: string): Promise<void> => {
+  private onTextChangeRelease = async (_event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | React.SyntheticEvent<HTMLElement> | null, value?: string): Promise<void> => {
+    await this.loadReleases(value);
+  }
+
+  private loadReleases = async (searchString?: string): Promise<void> => {
     this.releaseSearchResults.splice(0, this.releaseSearchResults.length, { id: 'loading', type: ListBoxItemType.Loading });
 
     const releaseRestClient = getClient(ReleaseRestClient);
