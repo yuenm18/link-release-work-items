@@ -39,10 +39,6 @@ class SelectReleasePanel extends React.Component<{}, IPanelContentState> {
   private getReleaseEnvironmentDisplay = (releaseEnvironment: ReleaseEnvironment | undefined): string => releaseEnvironment ? releaseEnvironment.name : '';
   private getProjectDisplay = (projectReference: ProjectReference | undefined): string => projectReference ? projectReference.name : '';
 
-  private get selectedProjectId(): string {
-    return this.state.selectedProject?.id ?? '';
-  }
-
   constructor(props: {}) {
     super(props);
 
@@ -189,7 +185,7 @@ class SelectReleasePanel extends React.Component<{}, IPanelContentState> {
       previousDeployment: undefined,
     });
 
-    await this.loadReleases();
+    await this.loadReleases(selectedProject?.id ?? '');
   }
 
   private areThereAnyWorkItem = (): boolean => {
@@ -197,19 +193,19 @@ class SelectReleasePanel extends React.Component<{}, IPanelContentState> {
   }
 
   private onTextChangeRelease = async (_event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | React.SyntheticEvent<HTMLElement> | null, value?: string): Promise<void> => {
-    await this.loadReleases(value);
+    await this.loadReleases(this.state.selectedProject?.id ?? '', value);
   }
 
-  private loadReleases = async (searchString?: string): Promise<void> => {
+  private loadReleases = async (projectId: string, searchString?: string): Promise<void> => {
     this.releaseSearchResults.splice(0, this.releaseSearchResults.length, { id: 'loading', type: ListBoxItemType.Loading });
 
     const releaseRestClient = getClient(ReleaseRestClient);
-    const releases: Release[] = await retryableApiCall(releaseRestClient.getReleases.bind(releaseRestClient), this.selectedProjectId, undefined, undefined, searchString);
+    const releases: Release[] = await retryableApiCall(releaseRestClient.getReleases.bind(releaseRestClient), projectId, undefined, undefined, searchString);
 
     // support searching by release id
     if (searchString && !isNaN(Number(searchString))) {
       releases.unshift(...await retryableApiCall(releaseRestClient.getReleases.bind(releaseRestClient),
-          this.selectedProjectId,
+          projectId,
           undefined,
           undefined,
           undefined,
@@ -252,7 +248,7 @@ class SelectReleasePanel extends React.Component<{}, IPanelContentState> {
     }
 
     const releaseRestClient = getClient(ReleaseRestClient);
-    selectedRelease = await retryableApiCall(releaseRestClient.getRelease.bind(releaseRestClient), this.selectedProjectId, selectedRelease.id);
+    selectedRelease = await retryableApiCall(releaseRestClient.getRelease.bind(releaseRestClient), this.state.selectedProject?.id ?? '', selectedRelease.id);
 
     this.updateDisplays(this.state.selectedProject, selectedRelease);
     this.setState({
