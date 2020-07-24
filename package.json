@@ -17,7 +17,7 @@
     "compile": "npm run clean && webpack --mode production",
     "compile:dev": "npm run clean && webpack --mode development",
     "build": "npm run compile",
-    "build:dev": "npm run compile:dev && npm run postbuild",
+    "build:dev": "npm run compile:dev",
     "postbuild": "npm run package-extension -- --rev-version",
     "postbuild:dev": "npm run package-extension:dev -- --rev-version",
     "publish": "npm run build && npm run publish-extension",

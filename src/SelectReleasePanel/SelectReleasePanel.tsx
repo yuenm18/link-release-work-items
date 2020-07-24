@@ -5,7 +5,7 @@ import * as SDK from 'azure-devops-extension-sdk';
 
 import { Button } from 'azure-devops-ui/Button';
 import { ButtonGroup } from 'azure-devops-ui/ButtonGroup';
-import { showRootComponent } from '../Common';
+import { showRootComponent, retryableApiCall } from '../Common';
 
 import { EditableDropdown } from 'azure-devops-ui/EditableDropdown';
 import { IListBoxItem, ListBoxItemType } from 'azure-devops-ui/ListBox';
@@ -163,7 +163,8 @@ class SelectReleasePanel extends React.Component<{}, IPanelContentState> {
   }
 
   private loadProjects = async (): Promise<void> => {
-    this.projectSearchResult.splice(0, this.projectSearchResult.length, ...(await getClient(CoreRestClient).getProjects()).map((project) => {
+    const coreRestClient = getClient(CoreRestClient);
+    this.projectSearchResult.splice(0, this.projectSearchResult.length, ...(await retryableApiCall(coreRestClient.getProjects.bind(coreRestClient))).map((project) => {
       const projectResult = {
         id: project.id,
         data: project,
@@ -202,11 +203,13 @@ class SelectReleasePanel extends React.Component<{}, IPanelContentState> {
   private loadReleases = async (searchString?: string): Promise<void> => {
     this.releaseSearchResults.splice(0, this.releaseSearchResults.length, { id: 'loading', type: ListBoxItemType.Loading });
 
-    const releases: Release[] = await getClient(ReleaseRestClient).getReleases(this.selectedProjectId, undefined, undefined, searchString);
+    const releaseRestClient = getClient(ReleaseRestClient);
+    const releases: Release[] = await retryableApiCall(releaseRestClient.getReleases.bind(releaseRestClient), this.selectedProjectId, undefined, undefined, searchString);
 
     // support searching by release id
     if (searchString && !isNaN(Number(searchString))) {
-      releases.unshift(...await getClient(ReleaseRestClient).getReleases(this.selectedProjectId,
+      releases.unshift(...await retryableApiCall(releaseRestClient.getReleases.bind(releaseRestClient),
+          this.selectedProjectId,
           undefined,
           undefined,
           undefined,
@@ -248,7 +251,8 @@ class SelectReleasePanel extends React.Component<{}, IPanelContentState> {
       return;
     }
 
-    selectedRelease = await getClient(ReleaseRestClient).getRelease(this.selectedProjectId, selectedRelease.id);
+    const releaseRestClient = getClient(ReleaseRestClient);
+    selectedRelease = await retryableApiCall(releaseRestClient.getRelease.bind(releaseRestClient), this.selectedProjectId, selectedRelease.id);
 
     this.updateDisplays(this.state.selectedProject, selectedRelease);
     this.setState({
@@ -289,7 +293,8 @@ class SelectReleasePanel extends React.Component<{}, IPanelContentState> {
 
     // Copy this url exactly
     // https://<org>.vsrm.visualstudio.com/<project>/_apis/Release/deployments?definitionId=18&definitionEnvironmentId=85&deploymentStatus=30&operationStatus=7960&latestAttemptsOnly=true&queryOrder=0&%24top=50&continuationToken=107925
-    const deployments = (await getClient(ReleaseRestClient).getDeployments(
+    const releaseRestClient = getClient(ReleaseRestClient);
+    const deployments = await retryableApiCall(releaseRestClient.getDeployments.bind(releaseRestClient),
         this.state.selectedRelease.projectReference.id,
         this.state.selectedRelease.releaseDefinition.id,
         selectedReleaseEnvironment.definitionEnvironmentId,
@@ -301,7 +306,7 @@ class SelectReleasePanel extends React.Component<{}, IPanelContentState> {
         true,
         ReleaseQueryOrder.Descending,
         2,
-        mostRecentDeploymentId));
+        mostRecentDeploymentId);
 
     if (!deployments.length) {
       this.workItems.removeAll();
@@ -312,7 +317,7 @@ class SelectReleasePanel extends React.Component<{}, IPanelContentState> {
 
     const workItemRefs = [];
     for (const artifact of this.state.selectedRelease.artifacts) {
-      workItemRefs.push(...await getClient(ReleaseRestClient).getReleaseWorkItemsRefs(
+      workItemRefs.push(...await retryableApiCall(releaseRestClient.getReleaseWorkItemsRefs.bind(releaseRestClient),
           this.state.selectedRelease.projectReference.id,
           this.state.selectedRelease.id,
           previousDeployment?.release.id,
@@ -325,7 +330,8 @@ class SelectReleasePanel extends React.Component<{}, IPanelContentState> {
     for (let i = 0; i < workItemRefs.length; i++) {
       this.workItems.push(new ObservableValue(undefined));
 
-      const workItem: WorkItem = await getClient(WorkItemTrackingRestClient).getWorkItem(+workItemRefs[i].id, this.state.selectedRelease.projectReference.id);
+      const workItemTrackingRestClient = getClient(WorkItemTrackingRestClient);
+      const workItem: WorkItem = await retryableApiCall(workItemTrackingRestClient.getWorkItem.bind(workItemTrackingRestClient), +workItemRefs[i].id, this.state.selectedRelease.projectReference.id);
       workItemRefs[i] = {
         id: String(workItem.id),
         type: workItem.fields['System.WorkItemType'],
